@@ -1,48 +1,47 @@
 const form = document.getElementById('chat-form');
 const input = document.getElementById('user-input');
 const chatBox = document.getElementById('chat-box');
-
-form.addEventListener('submit', function (e) {
+ 
+form.addEventListener('submit', async function (e) {
   e.preventDefault();
-
+ 
   const userMessage = input.value.trim();
   if (!userMessage) return;
-
+ 
   appendMessage('user', userMessage);
   input.value = '';
-
-  // Dummy reply simulation bot (placeholder)
-  // setTimeout(() => {
-  //   appendMessage('bot', 'Gemini is thinking... (this is dummy response)');
-  // }, 1000);
-
-  // Send message to backend
-  fetch('/api/chat', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ message: userMessage }),
-  })
-  .then(response => {
+ 
+  // Create a placeholder for the bot's response and show a thinking message
+  const botMessageElement = appendMessage('bot', 'Gemini is thinking...');
+ 
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message: userMessage }),
+    });
+ 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorData = await response.json().catch(() => ({ reply: `Server error: ${response.statusText}` }));
+      throw new Error(errorData.reply);
     }
-    return response.json();
-  })
-  .then(data => {
-    appendMessage('bot', data.reply); // assuming backend sends a JSON response with a 'reply' field
-  })
-  .catch(error => {
-    console.error('Error sending message:', error);
-    appendMessage('bot', 'Error: Could not get a response from the server.'); // display error message
-  })
+ 
+    const data = await response.json();
+    // Update the bot message element with the actual response
+    botMessageElement.textContent = data.reply;
+  } catch (error) {
+    // Update the bot message element with the error message
+    botMessageElement.textContent = `Error: ${error.message}`;
+  }
 });
-
+ 
 function appendMessage(sender, text) {
   const msg = document.createElement('div');
   msg.classList.add('message', sender);
   msg.textContent = text;
   chatBox.appendChild(msg);
   chatBox.scrollTop = chatBox.scrollHeight;
+  return msg;
 }
